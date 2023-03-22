@@ -146,17 +146,7 @@ class FormBuilder
         $arrValues = is_array($fieldValue) ? $fieldValue : [$fieldValue];
         $optionsList = '';
         foreach ($options as $value => $label) {
-            $config = [];
-            if (is_array($label)) {
-                $config = explode(' ', $label['config']);
-                $label = $label['label'];
-            }
-            $attrs = $this->buildHtmlAttrs([
-                'value'		=> $value,
-                'hidden'	=> in_array('hidden', $config),
-                'disabled'	=> in_array('disabled', $config),
-                'selected'	=> in_array(strval($value), $arrValues),
-            ], false);
+            $attrs = $this->buildHtmlAttrs(['value' => $value, 'selected' => in_array(strval($value), $arrValues)], false);
             $optionsList .= '<option ' . $attrs . '>' . $label . '</option>';
         }
 
@@ -224,15 +214,13 @@ class FormBuilder
 
     private function getInputAttributes(): array
     {
-        extract($this->get('render', 'type', 'multiple', 'name', 'size', 'placeholder', 'help', 'disabled', 'readonly', 'required', 'autocomplete', 'min', 'max', 'value', 'checked', 'formData', 'disableValidation', 'custom'));
+        extract($this->get('render', 'type', 'multiple', 'name', 'size', 'placeholder', 'help', 'disabled', 'readonly', 'required', 'autocomplete', 'min', 'max', 'value', 'checked', 'formData', 'disableValidation'));
 
         $isRadioOrCheckbox = $this->isRadioOrCheckbox();
         $type = $isRadioOrCheckbox ? $render : $type;
 
         $class = 'form-check-input';
-        if($custom){
-	        $class = $this->customClass('input');
-        }elseif (!$isRadioOrCheckbox) {
+        if (!$isRadioOrCheckbox) {
             $class = 'form-control';
             switch ($type) {
                 case 'file':
@@ -295,15 +283,9 @@ class FormBuilder
 
     private function renderLabel(): string
     {
-        extract($this->get('label', 'formInline', 'render', 'custom'));
+        extract($this->get('label', 'formInline', 'render'));
 
-	    $class = '';
-        if($custom){
-        	$class = $this->customClass('label');
-        } elseif (in_array($render, ['checkbox', 'radio'])){
-        	$class = 'form-check-label';
-        }
-
+        $class = in_array($render, ['checkbox', 'radio']) ? 'form-check-label' : '';
         if ($formInline) {
             $class = join(' ', [$class, 'mx-sm-2']);
         }
@@ -341,7 +323,7 @@ class FormBuilder
 
     private function wrapperInput(string $input): string
     {
-        extract($this->get('type', 'help', 'wrapperAttrs', 'formInline', 'name', 'custom'));
+        extract($this->get('type', 'help', 'wrapperAttrs', 'formInline', 'name'));
 
         if ($type === 'hidden') {
             return $input;
@@ -353,32 +335,23 @@ class FormBuilder
         $error          = $this->getInputErrorMarkup($name);
         $attrs          = $wrapperAttrs ?? [];
         $attrs['class'] = $this->createAttrsList(
-            $custom ? $this->customClass('wrapper') : '',
-	        $attrs['class'] ?? null,
-	        $formInline ? 'input-group' : 'form-group'
+            $attrs['class'] ?? null,
+            $formInline ? 'input-group' : 'form-group'
         );
         $attributes = $this->buildHtmlAttrs($attrs, false);
 
-        if($custom && $type === 'file'){
-        	$placeholder = $label;
-        	$this->set('custom', false);
-        	$label = $this->renderLabel();
-	        $this->set('custom', true);
-	        return '<div class="form-group">' . $label . '<div ' . $attributes . '>' . $placeholder . $input . $helpText . $error . '</div></div>';
-        }else{
-	        return '<div ' . $attributes . '>' . $label . $input . $helpText . $error . '</div>';
-        }
+        return '<div ' . $attributes . '>' . $label . $input . $helpText . $error . '</div>';
     }
 
     private function wrapperRadioCheckbox(string $input): string
     {
-        extract($this->get('inline', 'name', 'wrapperAttrs', 'custom'));
+        extract($this->get('inline', 'name', 'wrapperAttrs'));
 
         $attrs = $wrapperAttrs ?? [];
         $attrs['class'] = $this->createAttrsList(
-	        $custom ? $this->customClass('wrapper') : 'form-check',
-	        [$inline, ($custom ? 'form-check-inline' : 'custom-control-inline')],
-	        $attrs['class'] ?? null
+            'form-check',
+            [$inline, 'form-check-inline'],
+            $attrs['class'] ?? null
         );
         $attributes = $this->buildHtmlAttrs($attrs, false);
         $label = $this->renderLabel();
@@ -425,9 +398,7 @@ class FormBuilder
         }
 
         if ($this->hasOldInput()) {
-            if (isset(old()[$name])) {
-                return old($name, $value);
-            }
+            return old($name, $value);
         }
 
         $fromFill = $formData[$name] ?? null;
@@ -459,65 +430,6 @@ class FormBuilder
                 return '';
             }, array_keys($attributes))
         ));
-    }
-
-    private function customClass(string $element = 'input')
-    {
-    	extract($this->get('type', 'size', 'inline', 'render'));
-
-    	$type = $type ?? $render;
-    	$input = $element === 'input';
-	    $wrapper = $element === 'wrapper';
-    	$label = $element === 'label';
-
-	    if($input){
-	    	$class = 'custom-control-input';
-	    } elseif($wrapper){
-	    	$class = 'custom-control' . (isset($inline) && $inline ? ' custom-control-inline' : '');
-	    } else {
-	    	$class = 'custom-control-label';
-	    }
-
-	    switch($type){
-		    case 'checkbox':
-			    if($wrapper){
-				    $class .= ' custom-checkbox';
-			    }
-			    break;
-		    case 'radio':
-			    if($wrapper){
-				    $class .= ' custom-radio';
-			    }
-			    break;
-		    case 'switch':
-			    if($wrapper){
-				    $class .= ' custom-switch';
-			    }
-			    break;
-		    case 'select':
-			    if($input){
-				    $class = 'custom-select';
-				    $class = $size ? $class . '-' . $size : $class;
-			    } elseif($label || $wrapper){
-			    	$class = '';
-			    }
-			    break;
-		    case 'range':
-			    $class = $input ? 'custom-range' : '';
-			    break;
-		    case 'file':
-		    	if($wrapper) {
-		    		$class = 'custom-file';
-			    } elseif($input) {
-		    		$class = 'custom-file-input';
-			    } else{
-		    	    $class = 'custom-file-label';
-			    }
-			    break;
-		    default:
-		    	// do nothing
-	    }
-	    return $class;
     }
 
     private function createAttrsList(...$items)
